@@ -9,8 +9,13 @@ npm ci
 npm run dev
 ```
 
-## GitHub Pages 배포
+## Cloudflare Pages 배포
 
-`main` 또는 `feat/calendar-schedule-ui` 브랜치에 푸시하면 GitHub Actions가 앱을 빌드하고 GitHub Pages에 배포합니다. Actions 탭에서 **Deploy to GitHub Pages** 워크플로 상태를 확인할 수 있습니다.
+Cloudflare Pages 프로젝트 `wyd-riize`에서 빌드 명령은 `npm run build`, 출력 디렉터리는 `dist`로 설정합니다. Vite `base`는 `/`입니다.
 
-배포 사이트: https://senrayab.github.io/wyd-riize/
+직접 배포하려면 Wrangler 인증 후 실행합니다.
+
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name wyd-riize --branch main
+```
