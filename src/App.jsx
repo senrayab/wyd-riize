@@ -34,7 +34,9 @@ const initialEvents = [
 
 const days = ['일', '월', '화', '수', '목', '금', '토']
 const formatDate = (day) => `2026년 10월 ${day}일 (${days[(day + 3) % 7]})`
-const mascotSrc = `${import.meta.env.BASE_URL}mascot-peach.png`
+const rabbitWaveSrc = `${import.meta.env.BASE_URL}art/rabbit-wave.png`
+const rabbitPlannerSrc = `${import.meta.env.BASE_URL}art/rabbit-planner.png`
+const rabbitCheerSrc = `${import.meta.env.BASE_URL}art/rabbit-cheer.png`
 const artists = [
   { id: 'shotaro', name: '쇼타로', english: 'SHOTARO', color: '#d9ece4' },
   { id: 'eunseok', name: '은석', english: 'EUNSEOK', color: '#eee9f8' },
@@ -127,7 +129,7 @@ function CalendarPage({ events, selectedDay, setSelectedDay, openDay, openAdd, w
   const searchResults = query.trim() ? events.filter((event) => `${event.title} ${event.place} ${event.type}`.toLowerCase().includes(query.trim().toLowerCase())) : []
   return <>
     <header className="calendar-header"><div className="calendar-title"><h1>2026년 10월 <Icon icon={ChevronDown} className="chevron" size={17} /></h1></div><div className="header-actions"><label className="calendar-search" title="일정 검색"><Search size={18} /><input aria-label="일정 검색" value={query} onChange={(event) => setQuery(event.target.value)} /></label><button aria-label="오늘 날짜로 이동" title="오늘로 이동" onClick={() => { setQuery(''); setSelectedDay(24) }}><Icon icon={CalendarDays} /></button></div></header>
-    <section className="schedule-welcome"><div><span className="welcome-eyebrow">RIIZE WITH YOU</span><h2>오늘의 설렘을<br />차곡차곡 모아요</h2><p>이번 달 놓치지 말아야 할 순간</p></div><img src={mascotSrc} alt="별을 든 복숭아 마스코트" /></section>
+    <section className="schedule-welcome"><div><span className="welcome-eyebrow">RIIZE WITH YOU</span><h2>오늘의 설렘을<br />차곡차곡 모아요</h2><p>이번 달 놓치지 말아야 할 순간</p></div><img src={rabbitWaveSrc} alt="반갑게 손을 흔드는 토끼 캐릭터" /></section>
     <section className="calendar-board"><div className="board-label"><span>MONTH VIEW</span><span className="board-label-dot" />OCTOBER 2026</div><div className="weekdays">{weekdayLabels.map((day, index) => <span className={(!weekStartsMonday && index === 0) || (weekStartsMonday && index === 6) ? 'sunday' : (!weekStartsMonday && index === 6) || (weekStartsMonday && index === 5) ? 'saturday' : ''} key={day}>{day}</span>)}</div>
     <section className="month-grid" aria-label="2026년 10월 달력">{cells.map((value, index) => {
       const day = value < 1 ? 30 + value : value > 31 ? value - 31 : value
@@ -186,7 +188,7 @@ function ArtistsPage({ events, artists, favorites, setFavorites, showFavoritesOn
   return <>
     <header className="screen-header"><div><span className="eyebrow-label">MY ARTISTS</span><h2>아티스트</h2></div><button className={`icon-button ${showFavoritesOnly ? 'selected' : ''}`} onClick={toggleFavoriteFilter} aria-label={showFavoritesOnly ? '전체 멤버 보기' : '즐겨찾는 멤버만 보기'} aria-pressed={showFavoritesOnly} title={showFavoritesOnly ? '전체 멤버 보기' : '즐겨찾는 멤버만 보기'}><Icon icon={showFavoritesOnly ? Star : Settings2} /></button></header>
     <section className="artist-feature">
-      <img className="artist-mascot" src={mascotSrc} alt="별을 든 복숭아 마스코트" />
+      <img className="artist-mascot" src={rabbitCheerSrc} alt="별과 함께 응원하는 토끼 캐릭터" />
       <div className="artist-feature-top"><div className="artist-logo">RIIZE</div><button className={`favorite-chip ${isGroupSaved ? 'saved' : ''}`} onClick={() => setFavorites((items) => isGroupSaved ? items.filter((id) => id !== 'riize') : [...items, 'riize'])} aria-label="RIIZE 즐겨찾기"><Icon icon={Star} size={18} fill={isGroupSaved ? 'currentColor' : 'none'} /></button></div>
       <p className="artist-kicker">WE LOVE RIIZE</p><h3>RIIZE</h3><p className="artist-description">좋아하는 아티스트의 일정을<br />한곳에서 모아보세요.</p>
       <button className="text-link-button" onClick={() => onGroupSchedule()}>전체 일정 보기 <Icon icon={ChevronRight} size={16} /></button>
@@ -254,7 +256,7 @@ function InsightsPage({ events, onBack, onEvent }) {
   const today = 24
   return <>
     <header className="sub-header"><button onClick={onBack} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><strong>일정 인사이트</strong><span className="header-spacer" /></header>
-    <section className="insights-hero"><div><span className="eyebrow-label">YOUR OCTOBER</span><h2>좋아하는 순간을<br />놓치지 않도록.</h2><p>이번 달 일정을 한눈에 모았어요.</p></div><img src={mascotSrc} alt="일정을 함께 챙기는 복숭아 마스코트" /></section>
+    <section className="insights-hero"><div><span className="eyebrow-label">YOUR OCTOBER</span><h2>좋아하는 순간을<br />놓치지 않도록.</h2><p>이번 달 일정을 한눈에 모았어요.</p></div><img src={rabbitPlannerSrc} alt="달력을 품에 안은 토끼 캐릭터" /></section>
     <div className="insight-stats"><article><span className="stat-icon mint"><CalendarDays size={16} /></span><small>이번 달 일정</small><strong>{monthEvents.length}<em>개</em></strong><span className="stat-caption">10월에 예정된 스케줄</span></article><article><span className="stat-icon lavender"><Target size={16} /></span><small>가장 많은 카테고리</small><strong className="stat-category">{busiest?.id || '없음'}</strong><span className="stat-caption">{busiest ? `${busiest.count}개의 일정` : '새 일정을 추가해보세요'}</span></article></div>
     <section className="roadmap-card"><div className="roadmap-heading"><div><span className="eyebrow-label">MONTHLY ROADMAP</span><h3>2026년 10월</h3></div><span className="roadmap-month">OCT</span></div><div className="roadmap-scale"><span>1일</span><span>8일</span><span>15일</span><span>22일</span><span>31일</span></div><div className="roadmap-lanes">{categoryCounts.length ? categoryCounts.map((category) => <div className="roadmap-lane" key={category.id}><div className="lane-label"><span style={{ background: category.color }} /><b>{category.id}</b><small>{category.count}</small></div><div className="lane-track">{[1, 8, 15, 22, 31].map((day) => <i key={day} style={{ left: `${((day - 1) / 30) * 100}%` }} />)}{monthEvents.filter((event) => event.type === category.id).map((event) => <button key={event.id} aria-label={`${event.day}일 ${event.title}`} title={`${event.day}일 · ${event.title}`} className="roadmap-point" style={{ left: `${((event.day - 1) / 30) * 100}%`, background: category.color }} onClick={() => onEvent(event)} />)}{today <= 31 && <span className="today-marker" style={{ left: `${((today - 1) / 30) * 100}%` }} />}</div></div>) : <p className="empty-note">아직 일정이 없어요.</p>}</div><div className="roadmap-legend"><span><i className="legend-point" /> 일정</span><span><i className="legend-today" /> 오늘</span><small>점에 마우스를 올리거나 눌러 일정을 확인하세요</small></div></section>
     <section className="content-section"><div className="section-title-row"><h3>다가오는 일정</h3><span><BarChart3 size={14} /> 주간 일정 {weekEvents}개</span></div><div className="insight-event-list">{milestones.slice(0, 4).map((event) => <button className="insight-event" key={event.id} onClick={() => onEvent(event)}><span className="insight-event-date" style={{ color: event.color }}>{String(event.day).padStart(2, '0')}<small>OCT</small></span><span className="insight-event-line" style={{ background: event.color }} /><span className="insight-event-copy"><b>{event.title}</b><small>{event.type} · {event.time} · {event.place}</small></span><Icon icon={ChevronRight} size={16} /></button>)}</div></section>
@@ -277,7 +279,7 @@ function DesktopSidebar({ page, setPage, openAdd }) {
     <span className="sidebar-caption artists-caption">ARTISTS</span>
     <button className="sidebar-artist" onClick={() => setPage('artists')}><span className="sidebar-artist-dot" /><span>RIIZE</span><ChevronRight size={14} /></button>
     <button className={`sidebar-nav-link ${activePage === 'more' ? 'active' : ''}`} onClick={() => setPage('more')}><Icon icon={Ellipsis} size={18} />더보기</button>
-    <div className="sidebar-note"><img src={mascotSrc} alt="" /><b>좋아하는 순간,<br />놓치지 않게.</b><small>우리의 일정을 모아봐요</small></div>
+    <div className="sidebar-note"><img src={rabbitWaveSrc} alt="" /><b>좋아하는 순간,<br />놓치지 않게.</b><small>우리의 일정을 모아봐요</small></div>
     <div className="sidebar-account"><span className="account-avatar">R</span><span><b>RIIZE fan</b><small>나만의 일정 보관함</small></span><Ellipsis size={17} /></div>
   </aside>
 }
@@ -288,7 +290,7 @@ function DesktopAside({ events, page, openEvent, openAdd, setPage }) {
   const categorySummary = categories.map((category) => ({ ...category, count: events.filter((event) => event.type === category.id).length })).filter((item) => item.count).sort((a, b) => b.count - a.count).slice(0, 4)
   return <aside className="desktop-aside">
     <div className="aside-date"><span>2026년</span><b>10월의 기록</b><button onClick={() => setPage('calendar')} aria-label="캘린더 열기"><CalendarDays size={17} /></button></div>
-    <section className="aside-progress"><div className="aside-progress-top"><span>이번 달 모아둔 순간</span><Sparkles size={16} /></div><strong>{events.length}<small>개의 일정</small></strong><div className="aside-progress-track"><i style={{ width: `${Math.min(events.length * 7, 100)}%` }} /></div><p>RIIZE와 함께할 날이 기다려져요.</p><img src={mascotSrc} alt="" /></section>
+    <section className="aside-progress"><div className="aside-progress-top"><span>이번 달 모아둔 순간</span><Sparkles size={16} /></div><strong>{events.length}<small>개의 일정</small></strong><div className="aside-progress-track"><i style={{ width: `${Math.min(events.length * 7, 100)}%` }} /></div><p>RIIZE와 함께할 날이 기다려져요.</p><img src={rabbitPlannerSrc} alt="" /></section>
     <div className="aside-section-heading"><h3>다가오는 일정</h3><button onClick={() => setPage('list')}>모두 보기</button></div>
     <section className="aside-upcoming">{nextEvents.map((event) => <button className="aside-event" key={event.id} onClick={() => openEvent(event)}><span className="aside-event-day" style={{ color: event.color }}>{String(event.day).padStart(2, '0')}<small>OCT</small></span><i style={{ background: event.color }} /><span><b>{event.title}</b><small>{event.time} · {event.place}</small></span></button>)}</section>
     <div className="aside-section-heading category-heading"><h3>내 일정 컬러</h3><button onClick={() => setPage('insights')}>보기</button></div>
