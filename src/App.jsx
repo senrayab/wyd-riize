@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
-  Bell, CalendarCheck2, CalendarDays, ChevronDown, ChevronLeft,
-  ChevronRight, Clapperboard, Ellipsis, ExternalLink, FileText, Globe2, Heart,
+  Bell, BellRing, CalendarCheck2, CalendarDays, CalendarCog, ChevronDown, ChevronLeft,
+  ChevronRight, Clapperboard, Copy, Ellipsis, ExternalLink, FileText, Globe2, Heart,
   House, Link2, ListChecks, MapPin, Mic, MoreHorizontal, Pencil, Plus, Radio,
-  Search, Star, Ticket, Trash2, Tv, Video, Clock3,
+  Search, Settings2, Star, Ticket, Trash2, Tv, Video, Clock3, CircleHelp,
+  Download, Info, UserRound, Users, BarChart3, Target, Sparkles,
 } from 'lucide-react'
 
 function Icon({ icon: IconComponent, size = 18, ...props }) {
@@ -33,6 +34,14 @@ const initialEvents = [
 
 const days = ['일', '월', '화', '수', '목', '금', '토']
 const formatDate = (day) => `2026년 10월 ${day}일 (${days[(day + 3) % 7]})`
+const artists = [
+  { id: 'shotaro', name: '쇼타로', english: 'SHOTARO', color: '#d9ece4' },
+  { id: 'eunseok', name: '은석', english: 'EUNSEOK', color: '#eee9f8' },
+  { id: 'sungchan', name: '성찬', english: 'SUNGCHAN', color: '#f7e8e8' },
+  { id: 'wonbin', name: '원빈', english: 'WONBIN', color: '#e9eef8' },
+  { id: 'sohee', name: '소희', english: 'SOHEE', color: '#f8f0df' },
+  { id: 'anton', name: '앤톤', english: 'ANTON', color: '#e6f1f4' },
+]
 
 function App() {
   const [page, setPage] = useState('calendar')
@@ -41,14 +50,37 @@ function App() {
   const [events, setEvents] = useState(initialEvents)
   const [filter, setFilter] = useState('전체')
   const [favorite, setFavorite] = useState(true)
+  const [selectedArtist, setSelectedArtist] = useState(artists[0])
+  const [artistFavorites, setArtistFavorites] = useState(['riize'])
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [weekStartsMonday, setWeekStartsMonday] = useState(false)
+  const [detailMenuOpen, setDetailMenuOpen] = useState(false)
+  const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState({ type: '공연', title: '', place: '', time: '18:00', end: '20:00', link: '', memo: '', day: 8 })
+  const [form, setForm] = useState({ type: '공연', title: '', place: '', time: '18:00', end: '20:00', link: '', memo: '', day: 8, allDay: false })
 
   const dayEvents = useMemo(() => events.filter((event) => event.day === selectedDay), [events, selectedDay])
   const visibleEvents = events.filter((event) => (filter === '전체' || event.type === filter) && `${event.title} ${event.place}`.toLowerCase().includes(query.toLowerCase()))
 
   const openDay = (day) => { setSelectedDay(day); setPage('day') }
   const openEvent = (event) => { setSelectedEvent(event); setPage('detail') }
+  const showToast = (message) => { setToast(message); window.setTimeout(() => setToast(''), 2200) }
+  const duplicateEvent = (event) => {
+    const copy = { ...event, id: Date.now(), title: `${event.title} (복사)`, day: selectedDay }
+    setEvents((items) => [...items, copy].sort((a, b) => a.day - b.day || a.time.localeCompare(b.time)))
+    setSelectedEvent(copy); setPage('detail'); showToast('일정을 복제했어요')
+  }
+  const copyEventLink = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); showToast('일정 링크를 복사했어요') }
+    catch { showToast('링크 복사를 지원하지 않는 환경이에요') }
+  }
+  const exportEvents = () => {
+    const file = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(file)
+    const anchor = document.createElement('a')
+    anchor.href = url; anchor.download = 'wyd-riize-schedules.json'; anchor.click()
+    URL.revokeObjectURL(url); showToast('일정 파일을 저장했어요')
+  }
   const saveEvent = (event) => {
     if (!event.title.trim()) return
     const category = categories.find((item) => item.id === form.type)
@@ -57,28 +89,36 @@ function App() {
     setSelectedDay(saved.day); setSelectedEvent(saved); setPage('detail')
   }
 
-  const openAdd = () => { setForm({ type: '공연', title: '', place: '', time: '18:00', end: '20:00', link: '', memo: '', day: selectedDay }); setPage('add') }
+  const openAdd = () => { setForm({ type: '공연', title: '', place: '', time: '18:00', end: '20:00', link: '', memo: '', day: selectedDay, allDay: false }); setPage('add') }
 
   return (
     <main className="app-shell">
       <div className="app-frame">
-        {page === 'calendar' && <CalendarPage events={events} selectedDay={selectedDay} setSelectedDay={setSelectedDay} openDay={openDay} openAdd={openAdd} setPage={setPage} />}
+        {page === 'calendar' && <CalendarPage events={events} selectedDay={selectedDay} setSelectedDay={setSelectedDay} openDay={openDay} openAdd={openAdd} setPage={setPage} weekStartsMonday={weekStartsMonday} />}
         {page === 'day' && <DayPage events={dayEvents} day={selectedDay} openEvent={openEvent} openAdd={openAdd} setPage={setPage} setSelectedDay={setSelectedDay} />}
-        {page === 'detail' && <DetailPage event={selectedEvent} favorite={favorite} setFavorite={setFavorite} setPage={setPage} onEdit={() => { setForm({ type: selectedEvent.type, title: selectedEvent.title, place: selectedEvent.location || selectedEvent.place, time: selectedEvent.time, end: selectedEvent.end, link: selectedEvent.url || '', memo: selectedEvent.memo || '', day: selectedEvent.day }); setPage('add') }} onDelete={() => { setEvents((items) => items.filter((item) => item.id !== selectedEvent.id)); setPage('calendar') }} />}
+        {page === 'detail' && <DetailPage event={selectedEvent} favorite={favorite} setFavorite={setFavorite} menuOpen={detailMenuOpen} setMenuOpen={setDetailMenuOpen} setPage={setPage} onEdit={() => { setForm({ type: selectedEvent.type, title: selectedEvent.title, place: selectedEvent.location || selectedEvent.place, time: selectedEvent.time, end: selectedEvent.end, link: selectedEvent.url || '', memo: selectedEvent.memo || '', day: selectedEvent.day, allDay: Boolean(selectedEvent.allDay) }); setPage('add') }} onDuplicate={() => duplicateEvent(selectedEvent)} onCopyLink={copyEventLink} onDelete={() => { setEvents((items) => items.filter((item) => item.id !== selectedEvent.id)); setPage('calendar'); showToast('일정을 삭제했어요') }} />}
         {page === 'add' && <AddPage form={form} setForm={setForm} onSave={saveEvent} onCancel={() => setPage('calendar')} />}
         {page === 'list' && <ListPage events={visibleEvents} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} openEvent={openEvent} />}
+        {page === 'artists' && <ArtistsPage events={events} artists={artists} favorites={artistFavorites} setFavorites={setArtistFavorites} onSelect={(artist) => { setSelectedArtist(artist); setPage('artist-detail') }} onGroupSchedule={(event) => event ? openEvent(event) : setPage('list')} onSettings={() => setPage('more')} />}
+        {page === 'artist-detail' && <ArtistDetailPage artist={selectedArtist} events={events} onBack={() => setPage('artists')} onEvent={openEvent} isFavorite={artistFavorites.includes(selectedArtist.id)} onFavorite={() => setArtistFavorites((items) => items.includes(selectedArtist.id) ? items.filter((id) => id !== selectedArtist.id) : [...items, selectedArtist.id])} />}
+        {page === 'more' && <MorePage events={events} notificationsEnabled={notificationsEnabled} setNotificationsEnabled={setNotificationsEnabled} weekStartsMonday={weekStartsMonday} setWeekStartsMonday={setWeekStartsMonday} setPage={setPage} onExport={exportEvents} />}
+        {page === 'categories' && <CategoriesPage onBack={() => setPage('more')} />}
+        {page === 'insights' && <InsightsPage events={events} onBack={() => setPage('more')} onEvent={openEvent} />}
+        {page === 'settings' && <SettingsPage notificationsEnabled={notificationsEnabled} setNotificationsEnabled={setNotificationsEnabled} weekStartsMonday={weekStartsMonday} setWeekStartsMonday={setWeekStartsMonday} onBack={() => setPage('more')} />}
+        {toast && <div className="toast" role="status">{toast}</div>}
         {page !== 'add' && page !== 'detail' && <BottomNav page={page} setPage={setPage} openAdd={openAdd} />}
       </div>
     </main>
   )
 }
 
-function CalendarPage({ events, selectedDay, setSelectedDay, openDay, openAdd, setPage }) {
-  const cells = Array.from({ length: 35 }, (_, index) => index - 3)
+function CalendarPage({ events, selectedDay, setSelectedDay, openDay, openAdd, setPage, weekStartsMonday }) {
+  const cells = Array.from({ length: 35 }, (_, index) => index - (weekStartsMonday ? 2 : 3))
+  const weekdayLabels = weekStartsMonday ? [...days.slice(1), days[0]] : days
   const selectedEvents = events.filter((event) => event.day === selectedDay)
   return <>
     <header className="calendar-header"><div><h1>2026년 10월 <Icon icon={ChevronDown} className="chevron" size={17} /></h1></div><div className="header-actions"><button aria-label="검색" onClick={() => setPage('list')}><Icon icon={Search} /></button><button aria-label="날짜"><Icon icon={CalendarDays} /></button></div></header>
-    <div className="weekdays">{days.map((day, index) => <span className={index === 0 ? 'sunday' : index === 6 ? 'saturday' : ''} key={day}>{day}</span>)}</div>
+    <div className="weekdays">{weekdayLabels.map((day, index) => <span className={(!weekStartsMonday && index === 0) || (weekStartsMonday && index === 6) ? 'sunday' : (!weekStartsMonday && index === 6) || (weekStartsMonday && index === 5) ? 'saturday' : ''} key={day}>{day}</span>)}</div>
     <section className="month-grid" aria-label="2026년 10월 달력">{cells.map((value, index) => {
       const day = value < 1 ? 30 + value : value > 31 ? value - 31 : value
       const current = value >= 1 && value <= 31
@@ -101,13 +141,27 @@ function DayPage({ events, day, openEvent, openAdd, setPage, setSelectedDay }) {
     <section className="timeline">{slots.map((hour) => <div className="time-row" key={hour}><span>{String(hour).padStart(2, '0')}:00</span><i /></div>)}{events.map((event) => <button key={event.id} className="timeline-event" style={{ '--event-color': event.color, '--event-pale': `${event.color}20`, top: `${(Number(event.time.slice(0, 2)) - 10) * 38}px` }} onClick={() => openEvent(event)}><span className="timeline-dot" /><span className="category-pill" style={{ color: event.color, background: '#fff' }}>{event.type}</span><strong>{event.title}</strong><small>{event.place}</small><b className="tossface">{event.image}</b><span className="bell"><Icon icon={Bell} size={14} /></span></button>)}</section><button className="floating-add" onClick={openAdd} aria-label="일정 추가"><Icon icon={Plus} size={26} /></button></>
 }
 
-function DetailPage({ event, favorite, setFavorite, setPage, onEdit, onDelete }) {
-  return <section className="detail-page"><header className="detail-cover" style={{ background: `linear-gradient(135deg, ${event?.color || '#8b82d8'}, #557d70)` }}><button onClick={() => setPage('calendar')} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><button aria-label="더보기"><Icon icon={MoreHorizontal} /></button><span className="tossface">{event?.image}</span></header><article className="detail-card"><div className="detail-type"><span className="category-pill" style={{ color: event.color, background: `${event.color}22` }}>{event.type}</span><button className="star" onClick={() => setFavorite(!favorite)} aria-label={favorite ? '즐겨찾기 해제' : '즐겨찾기'}><Icon icon={Star} size={22} fill={favorite ? 'currentColor' : 'none'} /></button></div><h2>{event.title}</h2><p className="info-line"><Icon icon={CalendarCheck2} /><span>{formatDate(event.day)}<small><Clock3 size={13} /> {event.time} ~ {event.end} (약 2시간 30분)</small></span></p><p className="info-line"><Icon icon={MapPin} /><span>{event.location || event.place}<small>{event.location && <button className="map-button">지도 열기</button>}</small></span></p>{event.url && <p className="info-line"><Icon icon={Link2} /><a href={event.url}><ExternalLink size={13} /> {event.url}</a></p>}{event.memo && <div className="memo-box"><b><FileText size={14} />　메모</b><p>{event.memo}</p></div>}<p className="related-label"><Link2 size={14} />　관련 링크</p><div className="related-links"><button><Globe2 size={15} />　공식 홈페이지</button><button><Ticket size={15} />　티켓 예매</button></div><div className="detail-actions"><button className="edit-button" onClick={onEdit}><Pencil size={15} />　수정하기</button><button className="delete-button" onClick={onDelete} aria-label="일정 삭제"><Trash2 size={17} /></button></div></article></section>
+function DetailPage({ event, favorite, setFavorite, menuOpen, setMenuOpen, setPage, onEdit, onDuplicate, onCopyLink, onDelete }) {
+  return <section className="detail-page"><header className="detail-cover" style={{ background: `linear-gradient(135deg, ${event?.color || '#8b82d8'}, #557d70)` }}><button onClick={() => setPage('calendar')} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><div className="detail-menu-anchor"><button aria-label="더보기" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Icon icon={MoreHorizontal} /></button>{menuOpen && <div className="detail-popover" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(false); onCopyLink() }}><Icon icon={Link2} size={16} />링크 복사</button><button role="menuitem" onClick={() => { setMenuOpen(false); onDuplicate() }}><Icon icon={Copy} size={16} />일정 복제</button><button role="menuitem" className="danger" onClick={() => { setMenuOpen(false); onDelete() }}><Icon icon={Trash2} size={16} />일정 삭제</button></div>}</div><span className="tossface">{event?.image}</span></header><article className="detail-card"><div className="detail-type"><span className="category-pill" style={{ color: event.color, background: `${event.color}22` }}>{event.type}</span><button className="star" onClick={() => setFavorite(!favorite)} aria-label={favorite ? '즐겨찾기 해제' : '즐겨찾기'}><Icon icon={Star} size={22} fill={favorite ? 'currentColor' : 'none'} /></button></div><h2>{event.title}</h2><p className="info-line"><Icon icon={CalendarCheck2} /><span>{formatDate(event.day)}<small>{event.allDay ? '하루 종일' : <><Clock3 size={13} /> {event.time} ~ {event.end} (약 2시간 30분)</>}</small></span></p><p className="info-line"><Icon icon={MapPin} /><span>{event.location || event.place}<small>{event.location && <button className="map-button">지도 열기</button>}</small></span></p>{event.url && <p className="info-line"><Icon icon={Link2} /><a href={event.url}><ExternalLink size={13} /> {event.url}</a></p>}{event.memo && <div className="memo-box"><b><FileText size={14} />　메모</b><p>{event.memo}</p></div>}<p className="related-label"><Link2 size={14} />　관련 링크</p><div className="related-links"><button><Globe2 size={15} />　공식 홈페이지</button><button><Ticket size={15} />　티켓 예매</button></div><div className="detail-actions"><button className="edit-button" onClick={onEdit}><Pencil size={15} />　수정하기</button><button className="delete-button" onClick={onDelete} aria-label="일정 삭제"><Trash2 size={17} /></button></div></article></section>
 }
 
 function AddPage({ form, setForm, onSave, onCancel }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
-  return <section className="add-page"><header className="add-header"><button onClick={onCancel}>취소</button><strong>스케줄 추가</strong><button className="save-button" onClick={onSave}>저장</button></header><div className="category-grid">{categories.map((category) => <button key={category.id} className={form.type === category.id ? 'chosen' : ''} onClick={() => update('type', category.id)}><span style={{ color: category.color, background: category.pale }}><Icon icon={category.icon} size={20} /></span>{category.id}</button>)}</div><label className="input-wrap"><span><FileText size={16} /></span><input placeholder="제목을 입력하세요" value={form.title} onChange={(e) => update('title', e.target.value)} /></label><label className="input-wrap textarea-wrap"><span><FileText size={16} /></span><textarea placeholder="내용을 입력하세요 (선택)" value={form.memo} onChange={(e) => update('memo', e.target.value)} /></label><div className="toggle-row"><span><Clock3 size={17} /></span><b>하루 종일</b><button className="toggle" aria-label="하루 종일 전환" /></div><div className="form-row"><b>시작</b><input type="date" value={`2026-10-${String(form.day).padStart(2, '0')}`} onChange={(e) => update('day', Number(e.target.value.slice(-2)))} /><input type="time" value={form.time} onChange={(e) => update('time', e.target.value)} /></div><div className="form-row"><b>종료</b><input type="date" value={`2026-10-${String(form.day).padStart(2, '0')}`} onChange={(e) => update('day', Number(e.target.value.slice(-2)))} /><input type="time" value={form.end} onChange={(e) => update('end', e.target.value)} /></div><label className="input-wrap"><span><MapPin size={16} /></span><input placeholder="장소를 입력하세요" value={form.place} onChange={(e) => update('place', e.target.value)} /></label><label className="input-wrap"><span><Link2 size={16} /></span><input placeholder="관련 링크를 입력하세요" value={form.link} onChange={(e) => update('link', e.target.value)} /></label><label className="input-wrap"><span><Bell size={16} /></span><select defaultValue="10분 전"><option>알림 없음</option><option>10분 전</option><option>30분 전</option><option>1시간 전</option></select></label><div className="color-row"><b>색상</b>{['#f4b5c9', '#ffd0b9', '#ffe28d', '#bce8d7', '#b9ddfa', '#d6c9fa', '#ccced6'].map((color) => <button key={color} style={{ background: color }} />)}</div></section>
+  const dateValue = `2026-10-${String(form.day).padStart(2, '0')}`
+
+  return <section className="add-page">
+    <header className="add-header"><button onClick={onCancel}>취소</button><strong>스케줄 추가</strong><button className="save-button" onClick={onSave}>저장</button></header>
+    <div className="category-grid">{categories.map((category) => <button key={category.id} className={form.type === category.id ? 'chosen' : ''} onClick={() => update('type', category.id)}><span style={{ color: category.color, background: category.pale }}><Icon icon={category.icon} size={20} /></span>{category.id}</button>)}</div>
+    <label className="input-wrap"><span><FileText size={16} /></span><input placeholder="제목을 입력하세요" value={form.title} onChange={(e) => update('title', e.target.value)} /></label>
+    <label className="input-wrap textarea-wrap"><span><FileText size={16} /></span><textarea placeholder="내용을 입력하세요 (선택)" value={form.memo} onChange={(e) => update('memo', e.target.value)} /></label>
+    <div className="toggle-row"><span><Clock3 size={17} /></span><b>하루 종일</b><button type="button" className={`toggle ${form.allDay ? 'on' : ''}`} role="switch" aria-checked={form.allDay} aria-label="하루 종일" onClick={() => update('allDay', !form.allDay)} /></div>
+    <div className={`form-row ${form.allDay ? 'disabled' : ''}`}><b>시작</b><input type="date" value={dateValue} onChange={(e) => update('day', Number(e.target.value.slice(-2)))} /><input type="time" value={form.time} disabled={form.allDay} onChange={(e) => update('time', e.target.value)} /></div>
+    <div className={`form-row ${form.allDay ? 'disabled' : ''}`}><b>종료</b><input type="date" value={dateValue} onChange={(e) => update('day', Number(e.target.value.slice(-2)))} /><input type="time" value={form.end} disabled={form.allDay} onChange={(e) => update('end', e.target.value)} /></div>
+    <label className="input-wrap"><span><MapPin size={16} /></span><input placeholder="장소를 입력하세요" value={form.place} onChange={(e) => update('place', e.target.value)} /></label>
+    <label className="input-wrap"><span><Link2 size={16} /></span><input placeholder="관련 링크를 입력하세요" value={form.link} onChange={(e) => update('link', e.target.value)} /></label>
+    <label className="input-wrap"><span><Bell size={16} /></span><select defaultValue="10분 전"><option>알림 없음</option><option>10분 전</option><option>30분 전</option><option>1시간 전</option></select></label>
+    <div className="color-row"><b>색상</b>{['#f4b5c9', '#ffd0b9', '#ffe28d', '#bce8d7', '#b9ddfa', '#d6c9fa', '#ccced6'].map((color) => <button key={color} style={{ background: color }} />)}</div>
+  </section>
 }
 
 function ListPage({ events, filter, setFilter, query, setQuery, openEvent }) {
@@ -115,8 +169,88 @@ function ListPage({ events, filter, setFilter, query, setQuery, openEvent }) {
   return <><header className="list-header"><strong>스케줄 목록</strong><label><Search size={20} /><input aria-label="검색어" value={query} onChange={(event) => setQuery(event.target.value)} /></label></header><nav className="filter-tabs">{tabs.map((tab) => <button key={tab} className={filter === tab ? 'active' : ''} onClick={() => setFilter(tab)}>{tab}</button>)}</nav><p className="list-month">2026년 10월</p><div className="list-events">{events.map((event) => <button className="list-event" key={event.id} onClick={() => openEvent(event)}><i style={{ background: event.color }} /><span className="list-date">10.{String(event.day).padStart(2, '0')} ({days[(event.day + 3) % 7]})</span><time>{event.time}</time><span className="list-copy"><b className="category-pill" style={{ color: event.color, background: `${event.color}22` }}>{event.type}</b><strong>{event.title}</strong><small>{event.place}</small></span><span className="list-thumb tossface" style={{ background: `${event.color}22` }}>{event.image}</span></button>)}</div></>
 }
 
+function ArtistsPage({ events, artists, favorites, setFavorites, onSelect, onGroupSchedule, onSettings }) {
+  const upcoming = [...events].sort((a, b) => a.day - b.day || a.time.localeCompare(b.time)).slice(0, 3)
+  const isGroupSaved = favorites.includes('riize')
+  return <>
+    <header className="screen-header"><div><span className="eyebrow-label">MY ARTISTS</span><h2>아티스트</h2></div><button className="icon-button" onClick={onSettings} aria-label="설정"><Icon icon={Settings2} /></button></header>
+    <section className="artist-feature">
+      <div className="artist-feature-top"><div className="artist-logo">RIIZE</div><button className={`favorite-chip ${isGroupSaved ? 'saved' : ''}`} onClick={() => setFavorites((items) => isGroupSaved ? items.filter((id) => id !== 'riize') : [...items, 'riize'])} aria-label="RIIZE 즐겨찾기"><Icon icon={Star} size={18} fill={isGroupSaved ? 'currentColor' : 'none'} /></button></div>
+      <p className="artist-kicker">WE LOVE RIIZE</p><h3>RIIZE</h3><p className="artist-description">좋아하는 아티스트의 일정을<br />한곳에서 모아보세요.</p>
+      <button className="text-link-button" onClick={onGroupSchedule}>전체 일정 보기 <Icon icon={ChevronRight} size={16} /></button>
+      <div className="feature-orbit" aria-hidden="true"><span /><span /><span /></div>
+    </section>
+    <section className="content-section"><div className="section-title-row"><h3>멤버</h3><span>6명</span></div><div className="artist-grid">{artists.map((artist) => <button className="artist-card" key={artist.id} onClick={() => onSelect(artist)}><span className="artist-avatar" style={{ background: artist.color }}><UserRound size={25} /></span><strong>{artist.name}</strong><small>{artist.english}</small></button>)}</div></section>
+    <section className="content-section upcoming-section"><div className="section-title-row"><h3>다가오는 일정</h3><button onClick={onGroupSchedule}>모두 보기 <Icon icon={ChevronRight} size={14} /></button></div><div className="upcoming-card">{upcoming.map((event) => <EventRow key={event.id} event={event} onClick={() => onGroupSchedule(event)} compact />)}</div></section>
+  </>
+}
+
+function ArtistDetailPage({ artist, events, onBack, onEvent, isFavorite, onFavorite }) {
+  return <>
+    <header className="sub-header"><button onClick={onBack} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><strong>아티스트</strong><button onClick={onFavorite} aria-label="즐겨찾기"><Icon icon={Star} size={17} fill={isFavorite ? 'currentColor' : 'none'} /></button></header>
+    <section className="artist-detail-hero"><div className="artist-avatar large" style={{ background: artist.color }}><UserRound size={39} /></div><span className="eyebrow-label">RIIZE MEMBER</span><h2>{artist.name}</h2><p>{artist.english}</p><span className="artist-status"><span /> 일정 알림을 모아보고 있어요</span></section>
+    <section className="content-section"><div className="section-title-row"><h3>관련 일정</h3><span>{events.length}개</span></div><div className="upcoming-card">{events.length ? events.map((event) => <EventRow key={event.id} event={event} onClick={() => onEvent(event)} compact />) : <p className="empty-note">아직 등록된 일정이 없어요.</p>}</div></section>
+    <a className="official-link" href="https://www.riizeofficial.com/" target="_blank" rel="noreferrer"><Globe2 size={16} /> RIIZE 공식 홈페이지 <ExternalLink size={14} /></a>
+  </>
+}
+
+function MenuRow({ icon, title, description, onClick, trailing }) {
+  return <button className="menu-row" onClick={onClick}><span className="menu-row-icon"><Icon icon={icon} size={18} /></span><span className="menu-row-copy"><strong>{title}</strong><small>{description}</small></span>{trailing || <Icon icon={ChevronRight} className="menu-row-chevron" size={17} />}</button>
+}
+
+function MorePage({ events, setPage, onExport }) {
+  return <>
+    <header className="screen-header"><div><span className="eyebrow-label">MORE FOR YOU</span><h2>더보기</h2></div><span className="version-chip">v1.0</span></header>
+    <section className="more-profile-card"><span className="profile-mark"><CalendarDays size={22} /></span><div><strong>WYD RIIZE</strong><small>나만의 스케줄 보관함</small></div><span className="profile-event-count">{events.length}<small>일정</small></span></section>
+    <section className="content-section menu-section"><h3>환경 설정</h3><div className="menu-card">
+      <MenuRow icon={CalendarCog} title="캘린더 설정" description="시작 요일과 알림 표시를 관리해요" onClick={() => setPage('settings')} />
+      <MenuRow icon={Settings2} title="카테고리 안내" description="일정 종류와 색상을 확인해요" onClick={() => setPage('categories')} />
+    </div></section>
+    <section className="content-section menu-section"><h3>한눈에 보기</h3><div className="menu-card"><MenuRow icon={BarChart3} title="일정 인사이트" description="월간 일정 흐름과 카테고리 분포를 봐요" onClick={() => setPage('insights')} /></div></section>
+    <section className="content-section menu-section"><h3>내 데이터</h3><div className="menu-card"><MenuRow icon={Download} title="일정 내보내기" description={`일정 ${events.length}개를 JSON 파일로 저장해요`} onClick={onExport} trailing={<Icon icon={ChevronRight} className="menu-row-chevron" size={17} />} /></div></section>
+    <section className="content-section menu-section"><h3>정보</h3><div className="menu-card"><MenuRow icon={CircleHelp} title="RIIZE 공식 홈페이지" description="새 창에서 공식 사이트를 열어요" onClick={() => window.open('https://www.riizeofficial.com/', '_blank', 'noopener,noreferrer')} /><div className="app-info-row"><span><Info size={17} /> 앱 정보</span><small>WYD RIIZE · 버전 1.0.0</small></div></div></section>
+  </>
+}
+
+function SettingsPage({ notificationsEnabled, setNotificationsEnabled, weekStartsMonday, setWeekStartsMonday, onBack }) {
+  return <>
+    <header className="sub-header"><button onClick={onBack} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><strong>캘린더 설정</strong><span className="header-spacer" /></header>
+    <section className="settings-intro"><span className="settings-intro-icon"><Settings2 size={22} /></span><h2>내 캘린더를<br />편하게 맞춰보세요.</h2><p>설정은 이 브라우저에서 적용돼요.</p></section>
+    <section className="content-section settings-section"><h3>일정 표시</h3><div className="settings-card">
+      <div className="setting-row"><span className="setting-icon"><BellRing size={17} /></span><span className="setting-copy"><strong>알림 아이콘 표시</strong><small>시간표에서 알림 표시를 보여줘요</small></span><button type="button" className={`toggle ${notificationsEnabled ? 'on' : ''}`} role="switch" aria-checked={notificationsEnabled} aria-label="알림 아이콘 표시" onClick={() => setNotificationsEnabled(!notificationsEnabled)} /></div>
+      <div className="setting-divider" />
+      <div className="setting-row"><span className="setting-icon"><CalendarDays size={17} /></span><span className="setting-copy"><strong>한 주 시작 요일</strong><small>월요일부터 달력을 보여줘요</small></span><button type="button" className={`toggle ${weekStartsMonday ? 'on' : ''}`} role="switch" aria-checked={weekStartsMonday} aria-label="월요일부터 시작" onClick={() => setWeekStartsMonday(!weekStartsMonday)} /></div>
+    </div></section>
+  </>
+}
+
+function CategoriesPage({ onBack }) {
+  const descriptions = { 공연: '콘서트, 팬미팅, 투어', 방송: '음악방송, 예능, 드라마', 라디오: '라디오, 인터뷰', 예능: '예능, MC, 게스트', 팬싸: '팬사인회, 대면 이벤트', 콘텐츠: '공식 콘텐츠, 유튜브, SNS', 기타: '분류되지 않은 일정' }
+  return <>
+    <header className="sub-header"><button onClick={onBack} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><strong>카테고리 안내</strong><span className="header-spacer" /></header>
+    <p className="category-intro">일정 성격에 맞는 카테고리와<br />색상을 한눈에 확인해보세요.</p>
+    <div className="category-guide-list">{categories.map((category) => <article className="category-guide-card" key={category.id}><span className="category-guide-icon" style={{ color: category.color, background: category.pale }}><Icon icon={category.icon} size={20} /></span><strong>{category.id}</strong><span className="category-guide-dot" style={{ background: category.color }} /><small>{descriptions[category.id]}</small></article>)}</div>
+  </>
+}
+
+function InsightsPage({ events, onBack, onEvent }) {
+  const monthEvents = events.filter((event) => event.day >= 1 && event.day <= 31)
+  const categoryCounts = categories.map((category) => ({ ...category, count: monthEvents.filter((event) => event.type === category.id).length })).filter((category) => category.count)
+  const busiest = categoryCounts.reduce((best, category) => !best || category.count > best.count ? category : best, null)
+  const weekEvents = monthEvents.filter((event) => event.day >= 5 && event.day <= 11).length
+  const milestones = [...monthEvents].sort((a, b) => a.day - b.day || a.time.localeCompare(b.time))
+  const today = 24
+  return <>
+    <header className="sub-header"><button onClick={onBack} aria-label="뒤로"><Icon icon={ChevronLeft} /></button><strong>일정 인사이트</strong><span className="header-spacer" /></header>
+    <section className="insights-hero"><div><span className="eyebrow-label">YOUR OCTOBER</span><h2>좋아하는 순간을<br />놓치지 않도록.</h2><p>이번 달 일정을 한눈에 모았어요.</p></div><span className="insights-hero-icon"><Sparkles size={25} /></span></section>
+    <div className="insight-stats"><article><span className="stat-icon mint"><CalendarDays size={16} /></span><small>이번 달 일정</small><strong>{monthEvents.length}<em>개</em></strong><span className="stat-caption">10월에 예정된 스케줄</span></article><article><span className="stat-icon lavender"><Target size={16} /></span><small>가장 많은 카테고리</small><strong className="stat-category">{busiest?.id || '없음'}</strong><span className="stat-caption">{busiest ? `${busiest.count}개의 일정` : '새 일정을 추가해보세요'}</span></article></div>
+    <section className="roadmap-card"><div className="roadmap-heading"><div><span className="eyebrow-label">MONTHLY ROADMAP</span><h3>2026년 10월</h3></div><span className="roadmap-month">OCT</span></div><div className="roadmap-scale"><span>1일</span><span>8일</span><span>15일</span><span>22일</span><span>31일</span></div><div className="roadmap-lanes">{categoryCounts.length ? categoryCounts.map((category) => <div className="roadmap-lane" key={category.id}><div className="lane-label"><span style={{ background: category.color }} /><b>{category.id}</b><small>{category.count}</small></div><div className="lane-track">{[1, 8, 15, 22, 31].map((day) => <i key={day} style={{ left: `${((day - 1) / 30) * 100}%` }} />)}{monthEvents.filter((event) => event.type === category.id).map((event) => <button key={event.id} aria-label={`${event.day}일 ${event.title}`} title={`${event.day}일 · ${event.title}`} className="roadmap-point" style={{ left: `${((event.day - 1) / 30) * 100}%`, background: category.color }} onClick={() => onEvent(event)} />)}{today <= 31 && <span className="today-marker" style={{ left: `${((today - 1) / 30) * 100}%` }} />}</div></div>) : <p className="empty-note">아직 일정이 없어요.</p>}</div><div className="roadmap-legend"><span><i className="legend-point" /> 일정</span><span><i className="legend-today" /> 오늘</span><small>점에 마우스를 올리거나 눌러 일정을 확인하세요</small></div></section>
+    <section className="content-section"><div className="section-title-row"><h3>다가오는 일정</h3><span><BarChart3 size={14} /> 주간 일정 {weekEvents}개</span></div><div className="insight-event-list">{milestones.slice(0, 4).map((event) => <button className="insight-event" key={event.id} onClick={() => onEvent(event)}><span className="insight-event-date" style={{ color: event.color }}>{String(event.day).padStart(2, '0')}<small>OCT</small></span><span className="insight-event-line" style={{ background: event.color }} /><span className="insight-event-copy"><b>{event.title}</b><small>{event.type} · {event.time} · {event.place}</small></span><Icon icon={ChevronRight} size={16} /></button>)}</div></section>
+  </>
+}
+
 function BottomNav({ page, setPage, openAdd }) {
-  return <nav className="bottom-nav"><button className={page === 'calendar' || page === 'day' ? 'active' : ''} onClick={() => setPage('calendar')}><span><House size={20} /></span>캘린더</button><button className={page === 'list' ? 'active' : ''} onClick={() => setPage('list')}><span><ListChecks size={20} /></span>스케줄</button><button className="nav-add" onClick={openAdd} aria-label="일정 추가"><Plus size={24} /></button><button onClick={() => setPage('list')}><span><Heart size={20} /></span>아티스트</button><button onClick={() => setPage('list')}><span><Ellipsis size={20} /></span>더보기</button></nav>
+  return <nav className="bottom-nav"><button className={page === 'calendar' || page === 'day' ? 'active' : ''} onClick={() => setPage('calendar')}><span><House size={20} /></span>캘린더</button><button className={page === 'list' ? 'active' : ''} onClick={() => setPage('list')}><span><ListChecks size={20} /></span>스케줄</button><button className="nav-add" onClick={openAdd} aria-label="일정 추가"><Plus size={24} /></button><button className={page === 'artists' || page === 'artist-detail' ? 'active' : ''} onClick={() => setPage('artists')}><span><Heart size={20} /></span>아티스트</button><button className={page === 'more' || page === 'settings' || page === 'categories' ? 'active' : ''} onClick={() => setPage('more')}><span><Ellipsis size={20} /></span>더보기</button></nav>
 }
 
 export default App
